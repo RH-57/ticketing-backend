@@ -1,0 +1,235 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        Int       @id @default(autoincrement())
+  name      String?   @db.VarChar(50)
+  email     String    @unique(map: "email") @db.VarChar(100)
+  password  String?   @db.VarChar(255)
+  role      Role      @default(admin)
+  deletedAt DateTime? @db.Timestamp
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  Problem   Problem[]
+  Ticket    Ticket[]
+  Comment   Comment[]
+
+  @@map("users")
+}
+
+enum Role {
+  superadmin
+  admin
+  technician
+}
+
+model Branch {
+  id        Int      @id @default(autoincrement())
+  code      String   @unique(map: "code") @db.VarChar(4)
+  name      String?  @db.VarChar(50)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  departments Department[]
+  divisions   Division[]
+  employees   Employee[]
+  Problem     Problem[]
+  Ticket      Ticket[]
+
+  @@map("branches")
+}
+
+model Employee {
+  id           Int         @id @default(autoincrement())
+  name         String?     @db.VarChar(50)
+  branchId     Int
+  branch       Branch      @relation(fields: [branchId], references: [id])
+  divisionId   Int
+  division     Division    @relation(fields: [divisionId], references: [id])
+  departmentId Int?
+  department   Department? @relation(fields: [departmentId], references: [id])
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  Problem Problem[]
+  Ticket  Ticket[]
+
+  @@map("employees")
+}
+
+model Category {
+  id        Int      @id @default(autoincrement())
+  name      String?  @db.VarChar(30)
+  slug      String?  @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  subCategories SubCategory[]
+  Problem       Problem[]
+  Comment       Comment[]
+
+  @@map("categories")
+}
+
+model SubCategory {
+  id         Int      @id @default(autoincrement())
+  name       String?  @db.VarChar(30)
+  slug       String?  @unique
+  categoryId Int
+  category   Category @relation(fields: [categoryId], references: [id])
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  subSubCategories SubSubCategory[]
+  Problem          Problem[]
+  Comment          Comment[]
+
+  @@map("sub_categories")
+}
+
+model SubSubCategory {
+  id            Int         @id @default(autoincrement())
+  name          String?     @db.VarChar(30)
+  subCategoryId Int
+  subCategory   SubCategory @relation(fields: [subCategoryId], references: [id])
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  Problem Problem[]
+  Comment Comment[]
+
+  @@map("sub_sub_categories")
+}
+
+model Problem {
+  id               Int            @id @default(autoincrement())
+  categoryId       Int
+  category         Category       @relation(fields: [categoryId], references: [id])
+  subCategoryId    Int
+  subCategory      SubCategory    @relation(fields: [subCategoryId], references: [id])
+  subSubCategoryId Int
+  subSubCategory   SubSubCategory @relation(fields: [subSubCategoryId], references: [id])
+  branchId         Int
+  branch           Branch         @relation(fields: [branchId], references: [id])
+  employeeId       Int
+  employee         Employee       @relation(fields: [employeeId], references: [id])
+  userId           Int
+  user             User           @relation(fields: [userId], references: [id])
+  detail_report    String?        @db.Text
+  detail_problem   String?        @db.Text
+  detail_solution  String?        @db.Text
+  reportedAt       DateTime
+  finishedAt       DateTime       @default(now())
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  @@map("problems")
+}
+
+model Ticket {
+  id           Int        @id @default(autoincrement())
+  ticketNumber String     @unique
+  title        String
+  branchId     Int
+  branch       Branch     @relation(fields: [branchId], references: [id])
+  divisionId   Int
+  division     Division   @relation(fields: [divisionId], references: [id])
+  departmentId Int
+  department   Department @relation(fields: [departmentId], references: [id])
+  employeeId   Int
+  employee     Employee   @relation(fields: [employeeId], references: [id])
+  reportedById Int
+  user         User       @relation(fields: [reportedById], references: [id])
+  description  String?
+  status       Status     @default(Open)
+  priority     Priority   @default(Medium)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  closedAt     DateTime?
+
+  comments Comment[]
+
+  @@map("tickets")
+}
+
+enum Status {
+  Open
+  In_Progress
+  Resolved
+  Closed
+}
+
+enum Priority {
+  Low
+  Medium
+  High
+  Critical
+}
+
+model Department {
+  id         Int      @id @default(autoincrement())
+  name       String   @db.VarChar(30)
+  branchId   Int
+  branch     Branch   @relation(fields: [branchId], references: [id])
+  divisionId Int
+  division   Division @relation(fields: [divisionId], references: [id])
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  employees Employee[]
+  tickets   Ticket[]
+
+  @@map("departments")
+}
+
+model Comment {
+  id               Int            @id @default(autoincrement())
+  ticketId         Int            @unique
+  ticket           Ticket         @relation(fields: [ticketId], references: [id])
+  userId           Int            @default(2)
+  user             User           @relation(fields: [userId], references: [id])
+  categoryId       Int
+  category         Category       @relation(fields: [categoryId], references: [id])
+  subCategoryId    Int
+  subCategory      SubCategory    @relation(fields: [subCategoryId], references: [id])
+  subSubCategoryId Int
+  subSubCategory   SubSubCategory @relation(fields: [subSubCategoryId], references: [id])
+  type             Type           @default(Malfunction)
+  description      String?
+  createdAt        DateTime       @default(now())
+
+  @@map("comments")
+}
+
+enum Type {
+  Malfunction
+  Human_Error
+  Other
+}
+
+model Division {
+  id        Int      @id @default(autoincrement())
+  name      String   @db.VarChar(30)
+  branchId  Int
+  branch    Branch   @relation(fields: [branchId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  departments Department[]
+  employees   Employee[]
+  tickets     Ticket[]
+
+  @@map("divisions")
+}
