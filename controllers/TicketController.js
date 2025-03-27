@@ -206,60 +206,64 @@ const showTicketById = async (req, res) => {
 }
 
 const createTicket = async (req, res) => {
-    const errors = validationResult(req)
+    const errors = validationResult(req);
 
-    if(!errors.isEmpty()) {
+    if (!errors.isEmpty()) {
         return res.status(422).json({
             success: false,
-            message: 'Validation Error',
+            message: "Validation Error",
             errors: errors.array(),
-        })
+        });
     }
 
     try {
-        const lastTicket = await prisma.ticket.findFirst({
-            orderBy: {
-                id: 'desc'
-            },
-            select: {
-                ticketNumber: true
-            }
-        })
-        
-        let newTicketNumber = "IT-1"
-        if(lastTicket) {
-            const lastNumber = parseInt(lastTicket.ticketNumber.replace("IT-", ""), 10)
-            newTicketNumber = `IT-${lastNumber + 1}`
-        }
+        const ticket = await prisma.$transaction(async (prisma) => {
+            // 1️⃣ Insert tiket tanpa `ticketNumber`
+            const newTicket = await prisma.ticket.create({
+                data: {
+                    title: req.body.title,
+                    branchId: req.body.branchId,
+                    divisionId: parseInt(req.body.divisionId),
+                    departmentId: parseInt(req.body.departmentId),
+                    employeeId: req.body.employeeId,
+                    reportedById: req.body.reportedById,
+                    description: req.body.description,
+                    status: req.body.status || "Open",
+                    priority: req.body.priority || "Medium",
+                },
+            });
 
-        const ticket = await prisma.ticket.create({
-            data: {
-                ticketNumber: newTicketNumber,
-                title: req.body.title,
-                branchId: req.body.branchId,
-                divisionId: parseInt(req.body.divisionId),
-                departmentId: parseInt(req.body.departmentId),
-                employeeId: req.body.employeeId,
-                reportedById: req.body.reportedById,
-                description: req.body.description,
-                status: req.body.status || 'Open',
-                priority: req.body.priority || 'Medium',
-            }
-        })
+            // 2️⃣ Update `ticketNumber` setelah memastikan ID sudah didapat
+            const ticketNumber = `IT-${newTicket.id}`;
+
+            // Pastikan update dalam transaksi yang sama agar tidak bentrok
+            return await prisma.ticket.update({
+                where: { id: newTicket.id },
+                data: { ticketNumber },
+            });
+        });
 
         res.status(201).send({
             status: true,
-            message: 'New Ticket has been created',
+            message: "New Ticket has been created",
             data: ticket,
-        })
+        });
     } catch (error) {
-        console.error(error)
+        console.error("Error creating ticket:", error);
+        
+        if (error.code === "P2002") {
+            return res.status(409).send({
+                status: false,
+                message: "Ticket creation conflict, please try again.",
+            });
+        }
+
         res.status(500).send({
             status: false,
-            message: 'Internal Server Error',
-        })
+            message: "Internal Server Error",
+        });
     }
-}
+};
 
 const updateTicket = async (req, res) => {
     const {id} = req.params

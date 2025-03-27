@@ -140,7 +140,7 @@ model Problem {
 
 model Ticket {
   id           Int        @id @default(autoincrement())
-  ticketNumber String     @unique
+  ticketNumber String?     @unique
   title        String
   branchId     Int
   branch       Branch     @relation(fields: [branchId], references: [id])
