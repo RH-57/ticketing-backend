@@ -216,4 +216,53 @@ const deleteUser = async (req, res) => {
     }
 }
 
-module.exports = { showUser, createUser, findUser, findUserById, updateUser, deleteUser }
+const changePassword = async (req, res) => {
+    const {oldPassword, newPassword} = req.body
+    const userId = req.user.id
+
+    try {
+        const user = await prisma.user.findUnique({
+            where: {
+                id: userId
+            },
+        })
+
+        if(!user) {
+            return res.status(404).json({
+                success: false,
+                message: 'User not found'
+            })
+        }
+
+        const isMatch = await bcrypt.compare(oldPassword, user.password)
+        if(!isMatch) {
+            return res.status(400).json({
+                success: false,
+                message: 'Old password is incorrect'
+            })
+        }
+
+        const hashedPassword = await bcrypt.hash(newPassword, 10)
+
+        await prisma.user.update({
+            where: {
+                id: userId,
+            },
+            data: {
+                password: hashedPassword
+            }
+        })
+
+        res.status(200).json({
+            success: true,
+            message: 'Password has been changed',
+        })
+    } catch (error) {
+        res.status(500).json({
+            succes: false,
+            message: 'Internal Server Error'
+        })
+    }
+}
+
+module.exports = { showUser, createUser, findUser, findUserById, updateUser, deleteUser, changePassword }
