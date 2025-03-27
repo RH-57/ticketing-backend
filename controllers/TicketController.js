@@ -218,7 +218,7 @@ const createTicket = async (req, res) => {
 
     try {
         const ticket = await prisma.$transaction(async (prisma) => {
-            // 1️⃣ Insert tiket tanpa `ticketNumber`
+            
             const newTicket = await prisma.ticket.create({
                 data: {
                     title: req.body.title,
@@ -233,10 +233,8 @@ const createTicket = async (req, res) => {
                 },
             });
 
-            // 2️⃣ Update `ticketNumber` setelah memastikan ID sudah didapat
             const ticketNumber = `IT-${newTicket.id}`;
 
-            // Pastikan update dalam transaksi yang sama agar tidak bentrok
             return await prisma.ticket.update({
                 where: { id: newTicket.id },
                 data: { ticketNumber },
