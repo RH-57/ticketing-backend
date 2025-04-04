@@ -13,5 +13,6 @@ router.get('/total-departments', dashboardController.totalDepartment)
 router.get('/percentage-tickets', dashboardController.percentageTicket)
 router.get('/most-active-departments', dashboardController.mostActiveDepartment)
 router.get('/chart-internet', dashboardController.chartInternet)
+router.get('/most-frequently-trouble-components', dashboardController.mostFrequentlyTroubleComponents)
 
 module.exports = router

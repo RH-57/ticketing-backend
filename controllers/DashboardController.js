@@ -169,7 +169,7 @@ const mostActiveDepartment = async (req, res) => {
                 });
 
                 return {
-                    department: department?.name || 'Unknown', // Default jika tidak ditemukan
+                    department: department?.name || 'Unknown', 
                     totalTickets: dept._count.id
                 };
             })
@@ -184,6 +184,50 @@ const mostActiveDepartment = async (req, res) => {
         res.status(500).send({
             success: false,
             message: 'internal Server error'
+        })
+    }
+}
+
+const mostFrequentlyTroubleComponents = async (req, res) => {
+    try {
+        const troubleComponents = await prisma.comment.groupBy({
+            by: ['subSubCategoryId'],
+            _count: {
+                id: true,
+            },
+            orderBy: {
+                _count: {
+                    id: 'desc'
+                }
+            },
+        })
+        const subSubcategoryData = await Promise.all(
+            troubleComponents.map(async (subSubCat) => {
+                const subSubCategories = await prisma.subSubCategory.findUnique({
+                    where: {
+                        id: subSubCat.subSubCategoryId,
+                    },
+                    select: {
+                        name: true,
+                    }
+                })
+
+                return {
+                    subSubCategories: subSubCategories?.name || 'Unknown',
+                    totalReport: subSubCat._count.id
+                }
+            })
+        )
+
+        res.status(200).send({
+            success: true,
+            message: 'Get most frequently trouble components',
+            data: subSubcategoryData
+        })
+    } catch (error) {
+        res.status(500).send({
+            success: false,
+            message: 'Internal Server Error'
         })
     }
 }
@@ -259,5 +303,6 @@ module.exports = {
     totalDepartment, 
     percentageTicket, 
     mostActiveDepartment,
+    mostFrequentlyTroubleComponents,
     chartInternet,
 }
