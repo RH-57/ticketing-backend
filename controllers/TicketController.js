@@ -507,6 +507,7 @@ const getTicketByCategory = async (req, res) => {
 const getTicketBySubCategory = async (req, res) => {
     try {
         const year = parseInt(req.params.year, 10)
+        const categoryId = req.query.category_id
         if(isNaN(year)) {
             return res.status(400).json({
                 success: false,
@@ -514,41 +515,67 @@ const getTicketBySubCategory = async (req, res) => {
             })
         }
 
+         // Filter waktu
+         const dateFilter = {
+            gte: new Date(`${year}-01-01`),
+            lte: new Date(`${year}-12-31`),
+        };
+
+        // Filter subCategory jika categoryId tersedia
+        let subCategoryFilter = {};
+        if (categoryId) {
+            const subCats = await prisma.subCategory.findMany({
+                where: {
+                    categoryId: parseInt(categoryId, 10),
+                },
+                select: {
+                    id: true,
+                },
+            });
+            const subCategoryIds = subCats.map((s) => s.id);
+            subCategoryFilter = {
+                subCategoryId: {
+                    in: subCategoryIds,
+                },
+            };
+        }
+
         const ticketBySubCategory = await prisma.comment.groupBy({
             by: ['subCategoryId'],
             where: {
-                createdAt: {
-                    gte: new Date(`${year}-01-01`),
-                    lte: new Date(`${year}-12-31`)
-                }
+                createdAt: dateFilter,
+                ...subCategoryFilter,
             },
             _count: {
-                id: true
-            }
-        })
+                id: true,
+            },
+        });
 
         const subCategories = await prisma.subCategory.findMany({
             select: {
                 id: true,
-                name: true
-            }
-        })
+                name: true,
+            },
+        });
 
         const formattedData = ticketBySubCategory.map((t) => ({
-            name: subCategories.find((subCat) => subCat.id === t.subCategoryId)?.name || "Unknown",
-            ticket: t._count.id
-        }))
+            name:
+                subCategories.find((subCat) => subCat.id === t.subCategoryId)?.name ||
+                'Unknown',
+            ticket: t._count.id,
+        }));
 
         res.status(200).send({
             success: true,
             message: 'Get total ticket subsubcategories',
-            data: formattedData
-        })
+            data: formattedData,
+        });
     } catch (error) {
+        console.error(error);
         res.status(500).send({
             success: false,
-            message: 'Internal Server Error'
-        })
+            message: 'Internal Server Error',
+        });
     }
 }
 
