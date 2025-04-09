@@ -66,7 +66,7 @@ const showOpenTicket = async (req, res) => {
                 status: true,
             },
             orderBy: {
-                createdAt: 'desc'
+                createdAt: 'asc'
             }
         })
 
