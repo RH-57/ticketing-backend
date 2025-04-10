@@ -458,20 +458,26 @@ const trendTicket = async (req, res) => {
 const getTicketByCategory = async (req, res) => {
     try {
         const year = parseInt(req.params.year, 10)
+        const month = parseInt(req.query.month, 10) // optional
 
         if (isNaN(year)) {
-            return res.status(400).json({
-                success: false,
-                message: 'Invalid year'
-            })
+            return res.status(400).json({ success: false, message: 'Invalid year' })
+        }
+
+        let startDate = new Date(`${year}-01-01`)
+        let endDate = new Date(`${year}-12-31`)
+
+        if (!isNaN(month) && month >= 1 && month <= 12) {
+            startDate = new Date(year, month - 1, 1)
+            endDate = new Date(year, month, 0, 23, 59, 59)
         }
 
         const ticketsByCategory = await prisma.comment.groupBy({
             by: ["categoryId"],
             where: {
                 createdAt: {
-                    gte: new Date(`${year}-01-01`),
-                    lte: new Date(`${year}-12-31`)
+                    gte: startDate,
+                    lte: endDate,
                 }
             },
             _count: {
@@ -497,184 +503,127 @@ const getTicketByCategory = async (req, res) => {
             data: formattedData
         })
     } catch (error) {
-        res.status(500).send({
-            sucess: false,
-            message: 'Internal Server Error'
-        })
+        console.error(error)
+        res.status(500).send({ success: false, message: 'Internal Server Error' })
     }
 }
 
 const getTicketBySubCategory = async (req, res) => {
     try {
-        const year = parseInt(req.params.year, 10)
-        const categoryId = req.query.category_id
-        if(isNaN(year)) {
-            return res.status(400).json({
-                success: false,
-                message: 'Invalid year'
-            })
+        const year = parseInt(req.params.year, 10);
+        const month = req.query.month;
+        const categoryId = req.query.category_id;
+
+        if (isNaN(year)) {
+            return res.status(400).json({ success: false, message: 'Invalid year' });
         }
 
-         // Filter waktu
-         const dateFilter = {
-            gte: new Date(`${year}-01-01`),
-            lte: new Date(`${year}-12-31`),
+        const dateFilter = {
+            gte: new Date(`${year}-${month || '01'}-01`),
+            lte: new Date(`${year}-${month || '12'}-31`)
         };
 
-        // Filter subCategory jika categoryId tersedia
         let subCategoryFilter = {};
         if (categoryId) {
             const subCats = await prisma.subCategory.findMany({
-                where: {
-                    categoryId: parseInt(categoryId, 10),
-                },
-                select: {
-                    id: true,
-                },
+                where: { categoryId: parseInt(categoryId, 10) },
+                select: { id: true }
             });
             const subCategoryIds = subCats.map((s) => s.id);
-            subCategoryFilter = {
-                subCategoryId: {
-                    in: subCategoryIds,
-                },
-            };
+            subCategoryFilter = { subCategoryId: { in: subCategoryIds } };
         }
 
         const ticketBySubCategory = await prisma.comment.groupBy({
             by: ['subCategoryId'],
             where: {
                 createdAt: dateFilter,
-                ...subCategoryFilter,
+                ...subCategoryFilter
             },
-            _count: {
-                id: true,
-            },
+            _count: { id: true }
         });
 
-        const subCategories = await prisma.subCategory.findMany({
-            select: {
-                id: true,
-                name: true,
-            },
-        });
+        const subCategories = await prisma.subCategory.findMany({ select: { id: true, name: true } });
 
         const formattedData = ticketBySubCategory.map((t) => ({
-            name:
-                subCategories.find((subCat) => subCat.id === t.subCategoryId)?.name ||
-                'Unknown',
-            ticket: t._count.id,
+            name: subCategories.find((sub) => sub.id === t.subCategoryId)?.name || 'Unknown',
+            ticket: t._count.id
         }));
 
-        res.status(200).send({
-            success: true,
-            message: 'Get total ticket subsubcategories',
-            data: formattedData,
-        });
-    } catch (error) {
-        console.error(error);
-        res.status(500).send({
-            success: false,
-            message: 'Internal Server Error',
-        });
+        res.status(200).json({ success: true, message: 'Subcategory Chart', data: formattedData });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ success: false, message: 'Internal Server Error' });
     }
-}
+};
 
 const getTicketBySubSubCategory = async (req, res) => {
     try {
         const year = parseInt(req.params.year, 10)
+        const month = parseInt(req.query.month, 10)
         const subCategoryId = req.query.subCategory_Id
-        if(isNaN(year)) {
-            return res.status(400).json({
-                success: false,
-                message: 'Invalid year'
-            })
+
+        if (isNaN(year)) {
+            return res.status(400).json({ success: false, message: 'Invalid year' })
         }
 
-        const dateFilter = {
-            gte: new Date(`${year}-01-01`),
-            lte: new Date(`${year}-12-31`),
+        let startDate = new Date(`${year}-01-01`)
+        let endDate = new Date(`${year}-12-31`)
+        if (!isNaN(month) && month >= 1 && month <= 12) {
+            startDate = new Date(year, month - 1, 1)
+            endDate = new Date(year, month, 0, 23, 59, 59)
         }
 
-        let subSubCategoryFilter = {};
+        let subSubCategoryFilter = {}
         if (subCategoryId) {
-            const subCategoryExists = await prisma.subCategory.findUnique({
-                where: {
-                    id: parseInt(subCategoryId, 10),
-                }
-            })
-
-            // Kalau subcategory tidak ditemukan, return data kosong
-            if (!subCategoryExists) {
-                return res.status(200).json({
-                    success: true,
-                    message: 'Subcategory not found',
-                    data: []
-                })
-            }
-
             const subSubCats = await prisma.subSubCategory.findMany({
-                where: {
-                    subCategoryId: parseInt(subCategoryId, 10),
-                },
-                select: {
-                    id: true,
-                },
-            });
-
-            const subSubCategoryIds = subSubCats.map((s) => s.id)
-
-            // Kalau tidak ada sub-subcategory juga kembalikan data kosong
+                where: { subCategoryId: parseInt(subCategoryId, 10) },
+                select: { id: true }
+            })
+            const subSubCategoryIds = subSubCats.map(s => s.id)
             if (subSubCategoryIds.length === 0) {
                 return res.status(200).json({
                     success: true,
-                    message: 'No sub-subcategories found under this subcategory',
-                    data: []
+                    message: 'No data for selected subcategory',
+                    data: [],
                 })
             }
 
             subSubCategoryFilter = {
-                subSubCategoryId: {
-                    in: subSubCategoryIds,
-                },
+                subSubCategoryId: { in: subSubCategoryIds },
             }
         }
 
         const ticketBySubSubCategory = await prisma.comment.groupBy({
             by: ['subSubCategoryId'],
             where: {
-                createdAt: dateFilter,
+                createdAt: {
+                    gte: startDate,
+                    lte: endDate,
+                },
                 ...subSubCategoryFilter,
             },
             _count: {
                 id: true,
             },
-        });
+        })
 
         const subSubCategories = await prisma.subSubCategory.findMany({
-            select: {
-                id: true,
-                name: true,
-            },
-        });
+            select: { id: true, name: true }
+        })
 
         const formattedData = ticketBySubSubCategory.map((t) => ({
-            name:
-                subSubCategories.find((subSubCat) => subSubCat.id === t.subSubCategoryId)?.name ||
-                'Unknown',
+            name: subSubCategories.find(s => s.id === t.subSubCategoryId)?.name || 'Unknown',
             ticket: t._count.id,
-        }));
+        }))
 
         res.status(200).send({
             success: true,
-            message: 'Get total ticket subsubcategories',
+            message: 'Get total ticket by SubSubCategory',
             data: formattedData,
-        });
+        })
     } catch (error) {
-        console.error(error);
-        res.status(500).send({
-            success: false,
-            message: 'Internal Server Error',
-        });
+        console.error(error)
+        res.status(500).send({ success: false, message: 'Internal Server Error' })
     }
 }
 
