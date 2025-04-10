@@ -579,6 +579,105 @@ const getTicketBySubCategory = async (req, res) => {
     }
 }
 
+const getTicketBySubSubCategory = async (req, res) => {
+    try {
+        const year = parseInt(req.params.year, 10)
+        const subCategoryId = req.query.subCategory_Id
+        if(isNaN(year)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid year'
+            })
+        }
+
+        const dateFilter = {
+            gte: new Date(`${year}-01-01`),
+            lte: new Date(`${year}-12-31`),
+        }
+
+        let subSubCategoryFilter = {};
+        if (subCategoryId) {
+            const subCategoryExists = await prisma.subCategory.findUnique({
+                where: {
+                    id: parseInt(subCategoryId, 10),
+                }
+            })
+
+            // Kalau subcategory tidak ditemukan, return data kosong
+            if (!subCategoryExists) {
+                return res.status(200).json({
+                    success: true,
+                    message: 'Subcategory not found',
+                    data: []
+                })
+            }
+
+            const subSubCats = await prisma.subSubCategory.findMany({
+                where: {
+                    subCategoryId: parseInt(subCategoryId, 10),
+                },
+                select: {
+                    id: true,
+                },
+            });
+
+            const subSubCategoryIds = subSubCats.map((s) => s.id)
+
+            // Kalau tidak ada sub-subcategory juga kembalikan data kosong
+            if (subSubCategoryIds.length === 0) {
+                return res.status(200).json({
+                    success: true,
+                    message: 'No sub-subcategories found under this subcategory',
+                    data: []
+                })
+            }
+
+            subSubCategoryFilter = {
+                subSubCategoryId: {
+                    in: subSubCategoryIds,
+                },
+            }
+        }
+
+        const ticketBySubSubCategory = await prisma.comment.groupBy({
+            by: ['subSubCategoryId'],
+            where: {
+                createdAt: dateFilter,
+                ...subSubCategoryFilter,
+            },
+            _count: {
+                id: true,
+            },
+        });
+
+        const subSubCategories = await prisma.subSubCategory.findMany({
+            select: {
+                id: true,
+                name: true,
+            },
+        });
+
+        const formattedData = ticketBySubSubCategory.map((t) => ({
+            name:
+                subSubCategories.find((subSubCat) => subSubCat.id === t.subSubCategoryId)?.name ||
+                'Unknown',
+            ticket: t._count.id,
+        }));
+
+        res.status(200).send({
+            success: true,
+            message: 'Get total ticket subsubcategories',
+            data: formattedData,
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(500).send({
+            success: false,
+            message: 'Internal Server Error',
+        });
+    }
+}
+
 module.exports = {
     showAllTicket, 
     showOpenTicket, 
@@ -591,4 +690,5 @@ module.exports = {
     trendTicket,
     getTicketByCategory,
     getTicketBySubCategory,
+    getTicketBySubSubCategory,
 }
