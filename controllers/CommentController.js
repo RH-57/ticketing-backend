@@ -145,5 +145,58 @@ const showTotalReportByType = async (req, res) => {
     }
 };
 
+const mostProductiveUser = async (req, res) => {
+    try {
+        const result = await prisma.comment.groupBy({
+            by: [
+                'userId'
+            ],
+            _count: {
+                userId: true
+            },
+            orderBy: {
+                _count: {
+                    userId: 'desc'
+                }
+            },
+            take: 4
+        })
 
-module.exports = {addComment, showComment, showTotalReportByType}
+        const userIds = result.map(item => item.userId)
+        const users = await prisma.user.findMany({
+            where: {
+                id: {
+                    in: userIds
+                }
+            },
+            select: {
+                id: true,
+                name: true,
+            }
+        })
+
+        const response = result.map(item => {
+            const user = users.find(u => u.id === item.userId)
+            return {
+                user_id: item.userId,
+                name: user?.name || 'Unknown',
+                total_comments: item._count.userId,
+            }
+        })
+
+        res.status(200).send({
+            success: true,
+            message: 'Most Productive User',
+            data: response
+        })
+    } catch (error) {
+        console.log(error)
+        res.status(500).send({
+            success: false,
+            message: 'Internal Server Error'
+        })
+    }
+}
+
+
+module.exports = {addComment, showComment, showTotalReportByType, mostProductiveUser}
