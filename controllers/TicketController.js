@@ -40,12 +40,19 @@ const showAllTicket = async (req, res) => {
     }
 }
 
+const priorityOrder = {
+    Critical: 1,
+    High: 2,
+    Medium: 3,
+    Low: 4
+  }
+  
 const showOpenTicket = async (req, res) => {
     try {
         const showOpenTickets = await prisma.ticket.findMany({
             where: {
                 status: {
-                    not: 'Closed'
+                not: 'Closed'
                 }
             },
             select: {
@@ -58,28 +65,30 @@ const showOpenTicket = async (req, res) => {
                     }
                 },
                 priority: true,
-                user: {
+                    user: {
                     select: {
                         name: true
                     }
                 },
                 status: true,
             },
-            orderBy: {
-                createdAt: 'asc'
-            }
-        })
+        });
+
+        // Custom sort di sini
+        showOpenTickets.sort((a, b) => {
+            return priorityOrder[a.priority] - priorityOrder[b.priority];
+        });
 
         res.status(200).send({
             success: true,
             message: 'Get all open ticket',
             data: showOpenTickets
-        })
-    } catch(error) {
+        });
+    } catch (error) {
         res.status(500).send({
-            success: false,
-            message: 'Internal Server Error'
-        })
+        success: false,
+        message: 'Internal Server Error'
+        });
     }
 }
 
