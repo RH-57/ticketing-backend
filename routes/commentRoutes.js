@@ -5,6 +5,7 @@ const {validateComment} = require('../utils/validators/comment')
 const verifyToken = require('../middlewares/auth')
 
 router.get('/most-productive-users', commentController.mostProductiveUser)
+router.get('/compare', commentController.compareSubcategoryByErrorType)
 router.get('/show-total-report-by-type', commentController.showTotalReportByType)
 router.get('/:ticketId', commentController.showComment)
 router.post('/', verifyToken, validateComment, commentController.addComment)
