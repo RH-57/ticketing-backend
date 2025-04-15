@@ -8,16 +8,6 @@ const validateTicket = [
     body('description')
         .notEmpty().withMessage('Description is required')
         .isString().withMessage('Description must be a string'),
-    body('branchId')
-        .notEmpty().withMessage('Branch ID is required')
-        .isInt().withMessage('Branch ID must be an integer')
-        .toInt()
-        .custom(async (branchId) => {
-            const branch = await prisma.branch.findUnique({ where: { id: branchId } });
-            if (!branch) {
-                throw new Error('Branch ID does not exist');
-            }
-        }),
     body('employeeId')
         .notEmpty().withMessage('Employee ID is required')
         .isInt().withMessage('Employee ID must be an integer')

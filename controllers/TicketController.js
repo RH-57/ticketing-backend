@@ -227,14 +227,33 @@ const createTicket = async (req, res) => {
 
     try {
         const ticket = await prisma.$transaction(async (prisma) => {
+
+            const employee = await prisma.employee.findUnique({
+                where: {
+                    id: req.body.employeeId
+                },
+                include: {
+                    branch: true,
+                    division: true,
+                    department: true
+
+                }
+            })
+
+            if(!employee) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'Employee not found'
+                })
+            }
             
             const newTicket = await prisma.ticket.create({
                 data: {
                     title: req.body.title,
-                    branchId: req.body.branchId,
-                    divisionId: parseInt(req.body.divisionId),
-                    departmentId: parseInt(req.body.departmentId),
-                    employeeId: req.body.employeeId,
+                    branchId: employee.branchId,
+                    divisionId: employee.divisionId,
+                    departmentId: employee.departmentId,
+                    employeeId: employee.id,
                     reportedById: req.body.reportedById,
                     description: req.body.description,
                     status: req.body.status || "Open",
