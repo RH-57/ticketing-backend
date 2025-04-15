@@ -242,7 +242,12 @@ const createTicket = async (req, res) => {
                 },
             });
 
-            const ticketNumber = `IT-${newTicket.id}`;
+            const now = new Date()
+            const year = now.getFullYear().toString().slice(-2)
+            const month = String(now.getMonth() + 1).padStart(2, '0')
+            const ticketNumber = `IT${year}${month}-${newTicket.id}`
+
+            //const ticketNumber = `IT-${newTicket.id}`;
 
             return await prisma.ticket.update({
                 where: { id: newTicket.id },
