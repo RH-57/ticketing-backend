@@ -33,6 +33,7 @@ enum Role {
   superadmin
   admin
   technician
+  viewer
 }
 
 model Branch {
@@ -167,6 +168,7 @@ model Ticket {
 enum Status {
   Open
   In_Progress
+  Pending
   Resolved
   Closed
 }
@@ -216,6 +218,7 @@ model Comment {
 enum Type {
   Malfunction
   Human_Error
+  Install
   Other
 }
 

@@ -19,7 +19,7 @@ const validateUser = [
             return true
         }),
     body('password').optional().isLength({min: 6}).withMessage('Password must be at least 6 characters long'),
-    body('role').optional().isIn(['superadmin', 'admin', 'technician']).withMessage('Role mus be either superadmin or admin'),
+    body('role').optional().isIn(['superadmin', 'admin', 'technician', 'viewer']).withMessage('Role mus be either superadmin or admin'),
 ]
 
 module.exports = {validateUser}
