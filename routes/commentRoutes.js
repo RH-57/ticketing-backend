@@ -6,6 +6,8 @@ const verifyToken = require('../middlewares/auth')
 const role = require('../middlewares/role')
 
 router.get('/most-productive-users', commentController.mostProductiveUser)
+router.get('/total-by-subcategories', commentController.showTotalReportBySubCategory)
+router.get('/total-by-subsubcategories', commentController.showTotalReportBySubSubCategory)
 router.get('/compare', commentController.compareSubcategoryByErrorType)
 router.get('/show-total-report-by-type', commentController.showTotalReportByType)
 router.get('/:ticketId', commentController.showComment)

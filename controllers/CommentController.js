@@ -278,4 +278,128 @@ const mostProductiveUser = async (req, res) => {
     }
 };
 
-module.exports = {addComment, showComment, showTotalReportByType, mostProductiveUser, compareSubcategoryByErrorType}
+const showTotalReportBySubCategory = async (req, res) => {
+    const year = req.query.year || new Date().getFullYear()
+    try {
+        const whereClause = year
+        ? {
+            createdAt: {
+              gte: new Date(`${year}-01-01T00:00:00.000Z`),
+              lte: new Date(`${year}-12-31T23:59:59.999Z`)
+            }
+          }
+        : {};
+        
+        const result = await prisma.comment.groupBy({
+            by: ['subCategoryId'],
+            where: whereClause,
+            _count: {
+              subCategoryId: true
+            },
+            orderBy: {
+              _count: {
+                subCategoryId: 'desc'
+              }
+            }
+        })
+        
+        const subCategoryIds = result.map(item => item.subCategoryId);
+        const subCategories = await prisma.subCategory.findMany({
+            where: {
+                id: { in: subCategoryIds }
+            },
+            select: {
+                id: true,
+                name: true
+            }
+        });
+    
+        const response = result.map(item => {
+            const subCategory = subCategories.find(u => u.id === item.subCategoryId);
+            return {
+                subCategory_id: item.subCategoryId,
+                name: subCategory?.name || 'Unknown',
+                total: item._count.subCategoryId
+            };
+        });
+
+        res.status(200).send({
+            success: true,
+            message: 'Total Ticket By SubCategory',
+            data: response
+        })
+    } catch (error) {
+        res.status(500).send({
+            success: false,
+            message: 'Internal Server Error'
+        })
+    }
+}
+
+const showTotalReportBySubSubCategory = async (req, res) => {
+    const year = req.query.year || new Date().getFullYear()
+    try {
+        const whereClause = year
+        ? {
+            createdAt: {
+              gte: new Date(`${year}-01-01T00:00:00.000Z`),
+              lte: new Date(`${year}-12-31T23:59:59.999Z`)
+            }
+          }
+        : {};
+        
+        const result = await prisma.comment.groupBy({
+            by: ['subSubCategoryId'],
+            where: whereClause,
+            _count: {
+              subSubCategoryId: true
+            },
+            orderBy: {
+              _count: {
+                subSubCategoryId: 'desc'
+              }
+            }
+        })
+        
+        const subSubCategoryIds = result.map(item => item.subSubCategoryId);
+        const subSubCategories = await prisma.subSubCategory.findMany({
+            where: {
+                id: { in: subSubCategoryIds }
+            },
+            select: {
+                id: true,
+                name: true
+            }
+        });
+    
+        const response = result.map(item => {
+            const subSubCategory = subSubCategories.find(u => u.id === item.subSubCategoryId);
+            return {
+                subSubCategory_id: item.subSubCategoryId,
+                name: subSubCategory?.name || 'Unknown',
+                total: item._count.subSubCategoryId
+            };
+        });
+
+        res.status(200).send({
+            success: true,
+            message: 'Total Ticket By SubSubCategory',
+            data: response
+        })
+    } catch (error) {
+        res.status(500).send({
+            success: false,
+            message: 'Internal Server Error'
+        })
+    }
+}
+
+module.exports = {
+    addComment, 
+    showComment, 
+    showTotalReportByType, 
+    mostProductiveUser, 
+    compareSubcategoryByErrorType, 
+    showTotalReportBySubCategory,
+    showTotalReportBySubSubCategory,
+}

@@ -33,24 +33,36 @@ const totalUser = async (req, res) => {
 }
 
 const totalTicketClosed = async (req, res) => {
+    const year = parseInt(req.query.year)
+  
     try {
-        const totalTickets = await prisma.ticket.count({
-            where: {
-                status: 'Closed'
-            }
-        })
-        res.status(200).send({
-            success: true,
-            message: 'Get Total Ticket Closed',
-            data: totalTickets
-        })
+      const whereClause = {
+        status: 'Closed',
+      }
+  
+      if (!isNaN(year)) {
+        whereClause.closedAt = {
+          gte: new Date(`${year}-01-01T00:00:00.000Z`),
+          lte: new Date(`${year}-12-31T23:59:59.999Z`)
+        }
+      }
+  
+      const totalTickets = await prisma.ticket.count({
+        where: whereClause
+      })
+  
+      res.status(200).send({
+        success: true,
+        message: 'Get Total Ticket Closed',
+        data: totalTickets
+      })
     } catch (error) {
-        res.status(500).send({
-            success: false,
-            message: 'Internal Server Error'
-        })
+      res.status(500).send({
+        success: false,
+        message: 'Internal Server Error'
+      })
     }
-}
+  }
 
 const getTotalTicket = async () => {
     return await prisma.ticket.count()
