@@ -22,7 +22,7 @@ const showDept = async (req, res) => {
                 }
             },
             orderBy: {
-                id: 'desc'
+                name: 'asc'
             }
         })
 

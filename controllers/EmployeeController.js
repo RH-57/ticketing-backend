@@ -26,34 +26,53 @@ const showEmployee = async (req, res) => {
 }
 
 const getEmployeeByDepartmentId = async (req, res) => {
-    
-    const { department } = req.query;
-    
-    try {
-        console.log("Department ID received:", department);  // Debugging
+    const { department_id } = req.query;
 
+    // Validasi department_id
+    if (!department_id) {
+        return res.status(400).send({
+            success: false,
+            message: "Department ID is required"
+        });
+    }
+
+    // Konversi ke number dan validasi
+    const departmentId = Number(department_id);
+    if (isNaN(departmentId)) {
+        return res.status(400).send({
+            success: false,
+            message: "Department ID must be a number"
+        });
+    }
+
+    try {
         const employees = await prisma.employee.findMany({
             where: {
-                departmentId: Number(department) // Gunakan "branchId", bukan "branch"
+                departmentId: departmentId // Gunakan exact match
+            },
+            include: {
+                branch: true,
+                division: true,
+                department: true,
             }
         });
 
-        console.log("Employees fetched:", employees);  // Debugging
-
         res.status(200).send({
             success: true,
-            message: "Get Employee By Department",
+            message: `Get Employee By Department ID ${departmentId}`,
             data: employees
         });
     } catch (error) {
-        console.error("Error fetching employees:", error); // Debugging
+        console.error("Error fetching employees:", error);
         res.status(500).send({
             success: false,
             message: "Internal Server Error",
-            error: error.message // Tambahkan untuk melihat detail error
+            error: error.message
         });
     }
 }
+
+
 
 const searchEmployee = async(req, res) => {
     const {query} = req.query
@@ -100,16 +119,34 @@ const searchEmployee = async(req, res) => {
 
 const createEmployee = async (req, res) => {
     const errors = validationResult(req)
-    if(!errors.isEmpty()) {
+    if (!errors.isEmpty()) {
         return res.status(422).json({
             success: false,
             message: 'Validation Error',
             errors: errors.array(),
-        })
+        });
     }
 
     try {
-        const {name, branchId, divisionId, departmentId} = req.body
+        const { name, branchId, divisionId, departmentId } = req.body;
+
+        // Cek apakah sudah ada employee dengan kombinasi tersebut
+        const existingEmployee = await prisma.employee.findFirst({
+            where: {
+                name,
+                branchId,
+                divisionId: divisionId ? parseInt(divisionId) : null,
+                departmentId: departmentId ? parseInt(departmentId) : null,
+            },
+        });
+
+        if (existingEmployee) {
+            return res.status(409).json({
+                status: false,
+                message: 'Employee with the same name, branch, division, and department already exists',
+            });
+        }
+
         const employee = await prisma.employee.create({
             data: {
                 name,
@@ -120,23 +157,24 @@ const createEmployee = async (req, res) => {
             include: {
                 branch: true,
                 division: true,
-                department: true
+                department: true,
             },
-        })
+        });
 
         res.status(200).send({
             status: true,
             message: 'New Employee Created',
             data: employee,
-        })
+        });
     } catch (error) {
-        console.log(error)
+        console.log(error);
         res.status(500).send({
             status: false,
-            message: 'Internal Server Error'
-        })
+            message: 'Internal Server Error',
+        });
     }
-}
+};
+
 
 const updateEmployee = async (req, res) => {
     const {id} = req.params
