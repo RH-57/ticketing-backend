@@ -362,17 +362,20 @@ const updateTicketStatus = async (req, res) => {
         }
 
         const validStatusTransitions = {
-            Open: 'In_Progress',
-            In_Progress: 'Resolved',
-            Resolved: 'Closed'
+            Open: ['In_Progress', 'Pending'],
+            In_Progress: ['Resolved', 'Pending'],
+            Pending: ['In_Progress', 'Resolved'],
+            Resolved: ['Closed'],
+            Closed: []
         }
 
-        if(!validStatusTransitions[ticket.status] || validStatusTransitions[ticket.status] !== status) {
+        // validasi transisi
+        if (!validStatusTransitions[ticket.status]?.includes(status)) {
             return res.status(400).send({
                 success: false,
                 message: `Invalid transition from ${ticket.status} to ${status}`
             })
-        } 
+        }
 
         const updateTicket = await prisma.ticket.update({
             where: {
